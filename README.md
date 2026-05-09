@@ -25,7 +25,7 @@ Run these commands from the `currency_app` directory.
 ## Build
 
 ```powershell
-pyinstaller --onefile --windowed main.py
+pyinstaller --onefile --windowed --name YenShift --icon assets\icons\yenshift_petal.ico main.py
 ```
 
 The SQLite cache is stored in:
@@ -39,6 +39,7 @@ The SQLite cache is stored in:
 ```text
 main.py
 app.py
+assets/
 ui/
 services/
 storage/

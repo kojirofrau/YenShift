@@ -93,22 +93,35 @@ def _extract_sell_rates_from_text(text: str) -> list[Decimal]:
 
 
 def _extract_best_rate_block(text: str) -> str:
-    start = text.find("Лучший курс")
+    start = _find_first_marker(text, ["Лучший курс", "Р›СѓС‡С€РёР№ РєСѓСЂСЃ"])
     if start == -1:
-        start = text.find("Все курсы банков")
+        start = _find_first_marker(text, ["Все курсы банков", "Р’СЃРµ РєСѓСЂСЃС‹ Р±Р°РЅРєРѕРІ"])
     if start == -1:
         return text
 
+    end_markers = [
+        "Новости",
+        "Где выгоднее",
+        "Информация о долларе",
+        "РќРѕРІРѕСЃС‚Рё",
+        "Р“РґРµ РІС‹РіРѕРґРЅРµРµ",
+        "РРЅС„РѕСЂРјР°С†РёСЏ Рѕ РґРѕР»Р»Р°СЂРµ",
+    ]
     end_candidates = [
-        index for marker in ("Новости", "Где выгоднее", "Информация о долларе")
+        index for marker in end_markers
         if (index := text.find(marker, start + 1)) != -1
     ]
     end = min(end_candidates) if end_candidates else len(text)
     return text[start:end]
 
 
+def _find_first_marker(text: str, markers: list[str]) -> int:
+    positions = [index for marker in markers if (index := text.find(marker)) != -1]
+    return min(positions) if positions else -1
+
+
 def _parse_decimal(value: str) -> Decimal | None:
-    cleaned = value.replace("\xa0", " ").replace("₽", "").replace(",", ".")
+    cleaned = value.replace("\xa0", " ").replace("₽", "").replace("в‚Ѕ", "").replace(",", ".")
     match = re.search(r"(?<!\d)(\d{2,3}(?:\.\d{1,4})?)(?!\d)", cleaned)
     if not match:
         return None
