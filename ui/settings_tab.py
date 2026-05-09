@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 
@@ -18,6 +18,9 @@ class SettingsTab(QWidget):
         self.open_database_button = QPushButton("Open database")
         self.database_label = QLabel(str(database_path))
         self.database_label.setWordWrap(True)
+        self.credit_label = QLabel("made by frau kojiro")
+        self.credit_label.setAlignment(Qt.AlignRight)
+        self.credit_label.setStyleSheet("color: #000000; font-size: 8pt;")
 
         self.refresh_button.clicked.connect(self.refresh_requested.emit)
         self.clear_cache_button.clicked.connect(self.clear_cache_requested.emit)
@@ -33,3 +36,4 @@ class SettingsTab(QWidget):
         layout.addWidget(QLabel("Database"))
         layout.addWidget(self.database_label)
         layout.addStretch(1)
+        layout.addWidget(self.credit_label)
