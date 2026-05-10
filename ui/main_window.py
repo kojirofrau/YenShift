@@ -147,7 +147,7 @@ class MainWindow(QMainWindow):
     @Slot(object)
     def on_refresh_finished(self, snapshot: RateSnapshot) -> None:
         self.apply_snapshot(snapshot)
-        self.reload_log()
+        self.reload_saved_data()
         if snapshot.warning:
             QMessageBox.warning(self, "Rates warning", snapshot.warning)
 
@@ -170,11 +170,15 @@ class MainWindow(QMainWindow):
 
     def apply_snapshot(self, snapshot: RateSnapshot) -> None:
         self.main_tab.set_snapshot(snapshot)
-        self.chart_tab.set_snapshot(snapshot)
 
     @Slot()
     def reload_log(self) -> None:
-        self.log_tab.set_snapshots(self.cache.list_snapshots())
+        self.reload_saved_data()
+
+    def reload_saved_data(self) -> None:
+        snapshots = self.cache.list_snapshots()
+        self.log_tab.set_snapshots(snapshots)
+        self.chart_tab.set_snapshots(snapshots)
 
     @Slot()
     def clear_cache(self) -> None:
@@ -184,7 +188,7 @@ class MainWindow(QMainWindow):
         self.cache.clear()
         self.main_tab.clear_snapshot()
         self.log_tab.set_snapshots([])
-        self.chart_tab.set_snapshot(None)
+        self.chart_tab.set_snapshots([])
         QMessageBox.information(self, "Cache cleared", "Saved rate records were cleared.")
 
     @Slot()
