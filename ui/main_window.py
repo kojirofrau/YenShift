@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+from datetime import date
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QThread, QTimer, QUrl, Signal, Slot
@@ -182,7 +183,8 @@ class MainWindow(QMainWindow):
         self.refresh_thread = None
 
     def apply_snapshot(self, snapshot: RateSnapshot) -> None:
-        self.main_tab.set_snapshot(snapshot)
+        comparison_snapshot = self.cache.get_latest_snapshot_before_date(date.today())
+        self.main_tab.set_snapshot(snapshot, comparison_snapshot)
 
     def play_notification_sound(self) -> None:
         if not self.settings_tab.notification_sound_enabled():

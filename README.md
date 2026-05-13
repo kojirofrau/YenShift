@@ -17,6 +17,8 @@ Automatic rate updates on startup can be enabled in the Settings tab. This optio
 
 The Convert tab calculates the entered RUB amount when Enter is pressed. The History tab can export saved rate records to an XLSX workbook.
 
+The Convert tab also shows color indicators next to each rate by comparing it with the latest saved record before the current day: light blue means better, red means worse, white means unchanged, and black means there is no earlier record to compare.
+
 YenShift plays a notification sound after a successful rate update. The sound can be disabled in the Settings tab and is enabled by default.
 
 ## Run
