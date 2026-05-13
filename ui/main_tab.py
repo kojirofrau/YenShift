@@ -6,7 +6,6 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFormLayout,
-    QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -37,9 +36,8 @@ class MainTab(QWidget):
         self.source_status_value.setWordWrap(True)
         self.last_update_value = QLabel("-")
 
-        self.calculate_button = QPushButton("Calculate")
         self.refresh_button = QPushButton("Refresh current rates")
-        self.calculate_button.clicked.connect(self.calculate)
+        self.amount_input.returnPressed.connect(self.calculate)
         self.refresh_button.clicked.connect(self.refresh_requested.emit)
 
         form = QFormLayout()
@@ -55,20 +53,15 @@ class MainTab(QWidget):
         form.addRow("Source status", self.source_status_value)
         form.addRow("Last successful update", self.last_update_value)
 
-        buttons = QHBoxLayout()
-        buttons.addWidget(self.calculate_button)
-        buttons.addWidget(self.refresh_button)
-
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(16)
         layout.addLayout(form)
         layout.addStretch(1)
-        layout.addLayout(buttons)
+        layout.addWidget(self.refresh_button)
 
     def set_loading(self, is_loading: bool) -> None:
         self.refresh_button.setEnabled(not is_loading)
-        self.calculate_button.setEnabled(not is_loading)
         if is_loading:
             self.source_status_value.setText("Refreshing current rates...")
 
@@ -86,6 +79,8 @@ class MainTab(QWidget):
         if snapshot.warning:
             source_status += f"\n{snapshot.warning}"
         self.source_status_value.setText(source_status)
+        if self.amount_input.text().strip():
+            self.calculate(show_errors=False)
 
     def clear_snapshot(self) -> None:
         self.snapshot = None
@@ -97,19 +92,22 @@ class MainTab(QWidget):
         self.source_status_value.setText("No rates loaded")
         self.last_update_value.setText("-")
 
-    def calculate(self) -> None:
+    def calculate(self, show_errors: bool = True) -> None:
         if self.snapshot is None:
-            QMessageBox.warning(self, "Rates unavailable", "Refresh current rates or load cached data first.")
+            if show_errors:
+                QMessageBox.warning(self, "Rates unavailable", "Refresh current rates or load cached data first.")
             return
 
         try:
             amount = Decimal(self.amount_input.text().strip().replace(",", "."))
         except InvalidOperation:
-            QMessageBox.warning(self, "Invalid amount", "Enter a valid RUB amount.")
+            if show_errors:
+                QMessageBox.warning(self, "Invalid amount", "Enter a valid RUB amount.")
             return
 
         if amount <= 0:
-            QMessageBox.warning(self, "Invalid amount", "RUB amount must be greater than zero.")
+            if show_errors:
+                QMessageBox.warning(self, "Invalid amount", "RUB amount must be greater than zero.")
             return
 
         usd = (amount / self.snapshot.rub_usd_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)

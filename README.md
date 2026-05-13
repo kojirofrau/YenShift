@@ -15,6 +15,8 @@ If an update fails, the app falls back to the latest saved SQLite record when on
 
 Automatic rate updates on startup can be enabled in the Settings tab. This option is disabled by default.
 
+The Convert tab calculates the entered RUB amount when Enter is pressed. The History tab can export saved rate records to an XLSX workbook.
+
 ## Run
 
 ```powershell

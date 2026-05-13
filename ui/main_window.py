@@ -47,9 +47,9 @@ class MainWindow(QMainWindow):
         self.settings_tab = SettingsTab(self.cache.database_path)
 
         tabs = QTabWidget()
-        tabs.addTab(self.main_tab, "Main")
-        tabs.addTab(self.log_tab, "Log")
-        tabs.addTab(self.chart_tab, "Chart")
+        tabs.addTab(self.main_tab, "Convert")
+        tabs.addTab(self.log_tab, "History")
+        tabs.addTab(self.chart_tab, "Trends")
         tabs.addTab(self.settings_tab, "Settings")
         self.setCentralWidget(tabs)
 
