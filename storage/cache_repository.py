@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from models.rates import RateSnapshot
 from storage.database import Database
+
+
+DATABASE_RATE_PRECISION = Decimal("0.0001")
 
 
 class CacheRepository:
@@ -16,6 +19,10 @@ class CacheRepository:
         return self.database.path
 
     def save_snapshot(self, snapshot: RateSnapshot) -> None:
+        rub_usd_rate = _database_rate(snapshot.rub_usd_rate)
+        usd_jpy_rate = _database_rate(snapshot.usd_jpy_rate)
+        rub_jpy_rate = _database_rate(snapshot.rub_jpy_rate)
+
         with self.database.connect() as conn:
             conn.execute(
                 """
@@ -31,9 +38,9 @@ class CacheRepository:
                 """,
                 (
                     snapshot.update_time.isoformat(timespec="seconds"),
-                    float(snapshot.rub_usd_rate),
-                    float(snapshot.usd_jpy_rate),
-                    float(snapshot.rub_jpy_rate),
+                    float(rub_usd_rate),
+                    float(usd_jpy_rate),
+                    float(rub_jpy_rate),
                     snapshot.banki_status,
                     snapshot.tokyo_card_status,
                 ),
@@ -93,3 +100,7 @@ class CacheRepository:
         with self.database.connect() as conn:
             conn.execute("DELETE FROM latest_rates")
             conn.commit()
+
+
+def _database_rate(value: Decimal) -> Decimal:
+    return value.quantize(DATABASE_RATE_PRECISION, rounding=ROUND_HALF_UP)

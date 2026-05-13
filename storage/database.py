@@ -57,4 +57,12 @@ class Database:
                 )
                 """
             )
+            conn.execute(
+                """
+                UPDATE latest_rates
+                SET rub_usd_rate = ROUND(rub_usd_rate, 4),
+                    usd_jpy_rate = ROUND(usd_jpy_rate, 4),
+                    rub_jpy_rate = ROUND(rub_jpy_rate, 4)
+                """
+            )
             conn.commit()

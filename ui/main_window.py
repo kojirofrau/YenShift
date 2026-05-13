@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-from PySide6.QtCore import QObject, QThread, Signal, Slot
+from PySide6.QtCore import QObject, QThread, QTimer, Signal, Slot
 from PySide6.QtWidgets import QMainWindow, QMessageBox, QTabWidget
 
 from models.rates import RateSnapshot
@@ -120,6 +120,8 @@ class MainWindow(QMainWindow):
 
         self.load_cached_snapshot()
         self.reload_log()
+        if self.settings_tab.auto_refresh_enabled():
+            QTimer.singleShot(0, self.refresh_rates)
 
     def load_cached_snapshot(self) -> None:
         snapshot = self.manager.latest_or_none()

@@ -13,6 +13,8 @@ It fetches current cash exchange rates from:
 
 If an update fails, the app falls back to the latest saved SQLite record when one exists.
 
+Automatic rate updates on startup can be enabled in the Settings tab. This option is disabled by default.
+
 ## Run
 
 ```powershell
@@ -20,12 +22,12 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Run these commands from the `currency_app` directory.
+Run these commands from the `YenShift` directory.
 
 ## Build
 
 ```powershell
-pyinstaller --onefile --windowed --name YenShift --icon assets\icons\yenshift_petal.ico main.py
+pyinstaller --noconfirm YenShift.spec
 ```
 
 The SQLite cache is stored in:
