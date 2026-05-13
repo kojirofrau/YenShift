@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 
-from PySide6.QtCore import QObject, QThread, QTimer, Signal, Slot
+from PySide6.QtCore import QObject, QThread, QTimer, QUrl, Signal, Slot
+from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import QMainWindow, QMessageBox, QTabWidget
 
 from models.rates import RateSnapshot
@@ -12,6 +15,9 @@ from ui.chart_tab import ChartTab
 from ui.log_tab import LogTab
 from ui.main_tab import MainTab
 from ui.settings_tab import SettingsTab
+
+
+NOTIFICATION_SOUND_PATH = "assets/audio/notification_1.mp3"
 
 
 class RefreshWorker(QObject):
@@ -37,6 +43,10 @@ class MainWindow(QMainWindow):
         self.manager = DataSourceManager(self.cache)
         self.refresh_thread: QThread | None = None
         self.refresh_worker: RefreshWorker | None = None
+        self.notification_audio = QAudioOutput(self)
+        self.notification_player = QMediaPlayer(self)
+        self.notification_player.setAudioOutput(self.notification_audio)
+        self.notification_audio.setVolume(0.7)
 
         self.setWindowTitle("YenShift")
         self.setFixedSize(512, 640)
@@ -150,6 +160,7 @@ class MainWindow(QMainWindow):
     def on_refresh_finished(self, snapshot: RateSnapshot) -> None:
         self.apply_snapshot(snapshot)
         self.reload_saved_data()
+        self.play_notification_sound()
         if snapshot.warning:
             QMessageBox.warning(self, "Rates warning", snapshot.warning)
 
@@ -172,6 +183,17 @@ class MainWindow(QMainWindow):
 
     def apply_snapshot(self, snapshot: RateSnapshot) -> None:
         self.main_tab.set_snapshot(snapshot)
+
+    def play_notification_sound(self) -> None:
+        if not self.settings_tab.notification_sound_enabled():
+            return
+
+        sound_path = _resource_path(NOTIFICATION_SOUND_PATH)
+        if not sound_path.exists():
+            return
+
+        self.notification_player.setSource(QUrl.fromLocalFile(str(sound_path)))
+        self.notification_player.play()
 
     @Slot()
     def reload_log(self) -> None:
@@ -199,3 +221,8 @@ class MainWindow(QMainWindow):
             os.startfile(str(self.cache.database_path))
         except OSError as exc:
             QMessageBox.warning(self, "Open database", str(exc))
+
+
+def _resource_path(relative_path: str) -> Path:
+    base_path = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
+    return base_path / relative_path

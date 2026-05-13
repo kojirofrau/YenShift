@@ -5,7 +5,10 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('assets\\icons\\yenshift_petal.ico', 'assets\\icons')],
+    datas=[
+        ('assets\\icons\\yenshift_petal.ico', 'assets\\icons'),
+        ('assets\\audio\\notification_1.mp3', 'assets\\audio'),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
