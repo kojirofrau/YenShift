@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QMessageBox, QSy
 
 from models.rates import RateSnapshot
 from services.data_sources import DataSourceManager
+from services.xlsx_importer import XlsxImportError, import_snapshots_from_xlsx
 from storage.cache_repository import CacheRepository
 from ui.chart_tab import ChartTab
 from ui.log_tab import LogTab
@@ -73,6 +74,7 @@ class MainWindow(QMainWindow):
         self.main_tab.refresh_requested.connect(self.refresh_rates)
         self.log_tab.refresh_requested.connect(self.reload_log)
         self.log_tab.clear_requested.connect(self.clear_cache)
+        self.log_tab.import_requested.connect(self.import_history)
         self.settings_tab.refresh_requested.connect(self.refresh_rates)
         self.settings_tab.clear_cache_requested.connect(self.clear_cache)
         self.settings_tab.open_database_requested.connect(self.open_database)
@@ -353,6 +355,28 @@ class MainWindow(QMainWindow):
         self.log_tab.set_snapshots([])
         self.chart_tab.set_snapshots([])
         QMessageBox.information(self, "Cache cleared", "Saved rate records were cleared.")
+
+    @Slot(object)
+    def import_history(self, path: Path) -> None:
+        try:
+            snapshots = import_snapshots_from_xlsx(path)
+        except XlsxImportError as exc:
+            QMessageBox.warning(self, "Import XLSX", str(exc))
+            return
+
+        for snapshot in snapshots:
+            self.cache.save_snapshot(snapshot)
+
+        self.reload_saved_data()
+        latest = self.manager.latest_or_none()
+        if latest is not None:
+            self.apply_snapshot(latest)
+
+        QMessageBox.information(
+            self,
+            "Import XLSX",
+            f"Imported {len(snapshots)} rate record(s) from current and previous days.",
+        )
 
     @Slot()
     def open_database(self) -> None:

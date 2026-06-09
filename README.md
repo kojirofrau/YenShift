@@ -21,7 +21,7 @@ YenShift can keep running in the Windows notification area after the main window
 
 If YenShift is already running and the shortcut is opened again, the existing app shows a notification instead of starting a second copy.
 
-The Convert tab calculates the entered RUB amount when Enter is pressed. The History tab can export saved rate records to an XLSX workbook.
+The Convert tab calculates the entered RUB amount when Enter is pressed. The History tab can export saved rate records to an XLSX workbook and import records from a matching YenShift XLSX export. Imports only save records from the current and previous day; rows for other dates are ignored, and workbooks with a different format are rejected.
 
 The Convert tab also shows color indicators next to each rate by comparing it with the latest saved record before the current day: light blue means better, red means worse, white means unchanged, and black means there is no earlier record to compare.
 

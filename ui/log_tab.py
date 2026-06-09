@@ -23,6 +23,7 @@ from services.xlsx_exporter import export_snapshots_to_xlsx
 class LogTab(QWidget):
     refresh_requested = Signal()
     clear_requested = Signal()
+    import_requested = Signal(object)
 
     HEADERS = [
         "Update time",
@@ -44,15 +45,19 @@ class LogTab(QWidget):
         self.table.horizontalHeader().setStretchLastSection(True)
 
         self.refresh_button = QPushButton("Refresh")
+        self.import_button = QPushButton("Import XLSX")
+        self.import_button.setIcon(_excel_icon())
         self.export_button = QPushButton("Export XLSX")
         self.export_button.setIcon(_excel_icon())
         self.clear_button = QPushButton("Clear log")
         self.refresh_button.clicked.connect(self.refresh_requested.emit)
+        self.import_button.clicked.connect(self.import_xlsx)
         self.export_button.clicked.connect(self.export_xlsx)
         self.clear_button.clicked.connect(self.clear_requested.emit)
 
         buttons = QHBoxLayout()
         buttons.addWidget(self.refresh_button)
+        buttons.addWidget(self.import_button)
         buttons.addWidget(self.export_button)
         buttons.addWidget(self.clear_button)
         buttons.addStretch(1)
@@ -105,6 +110,16 @@ class LogTab(QWidget):
             return
 
         QMessageBox.information(self, "Export XLSX", f"History exported to:\n{export_path}")
+
+    def import_xlsx(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import history",
+            "",
+            "Excel Workbook (*.xlsx)",
+        )
+        if path:
+            self.import_requested.emit(Path(path))
 
 
 def _excel_icon() -> QIcon:
