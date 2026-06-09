@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QThread, QTimer, QUrl, Signal, Slot
@@ -44,6 +44,7 @@ class MainWindow(QMainWindow):
         self.manager = DataSourceManager(self.cache)
         self.refresh_thread: QThread | None = None
         self.refresh_worker: RefreshWorker | None = None
+        self.last_scheduled_refresh_key = ""
         self.notification_audio = QAudioOutput(self)
         self.notification_player = QMediaPlayer(self)
         self.notification_player.setAudioOutput(self.notification_audio)
@@ -70,6 +71,12 @@ class MainWindow(QMainWindow):
         self.settings_tab.refresh_requested.connect(self.refresh_rates)
         self.settings_tab.clear_cache_requested.connect(self.clear_cache)
         self.settings_tab.open_database_requested.connect(self.open_database)
+        self.settings_tab.schedule_changed.connect(self.reset_scheduled_refresh_guard)
+
+        self.schedule_timer = QTimer(self)
+        self.schedule_timer.setInterval(30_000)
+        self.schedule_timer.timeout.connect(self.check_scheduled_refresh)
+        self.schedule_timer.start()
 
         self.setStyleSheet(
             """
@@ -133,6 +140,7 @@ class MainWindow(QMainWindow):
         self.reload_log()
         if self.settings_tab.auto_refresh_enabled():
             QTimer.singleShot(0, self.refresh_rates)
+        QTimer.singleShot(1_000, self.check_scheduled_refresh)
 
     def load_cached_snapshot(self) -> None:
         snapshot = self.manager.latest_or_none()
@@ -156,6 +164,27 @@ class MainWindow(QMainWindow):
         self.refresh_thread.finished.connect(self.refresh_worker.deleteLater)
         self.refresh_thread.finished.connect(self.cleanup_refresh_thread)
         self.refresh_thread.start()
+
+    @Slot()
+    def check_scheduled_refresh(self) -> None:
+        if not self.settings_tab.scheduled_refresh_enabled():
+            return
+
+        now = datetime.now()
+        current_time = now.strftime("%H:%M")
+        if current_time not in set(self.settings_tab.scheduled_refresh_times()):
+            return
+
+        refresh_key = f"{now.date().isoformat()} {current_time}"
+        if refresh_key == self.last_scheduled_refresh_key:
+            return
+
+        self.last_scheduled_refresh_key = refresh_key
+        self.refresh_rates()
+
+    @Slot()
+    def reset_scheduled_refresh_guard(self) -> None:
+        self.last_scheduled_refresh_key = ""
 
     @Slot(object)
     def on_refresh_finished(self, snapshot: RateSnapshot) -> None:

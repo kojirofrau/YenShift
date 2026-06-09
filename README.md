@@ -15,6 +15,8 @@ If an update fails, the app falls back to the latest saved SQLite record when on
 
 Automatic rate updates on startup can be enabled in the Settings tab. This option is disabled by default.
 
+Scheduled automatic updates can also be enabled in Settings. When enabled, YenShift checks the local computer time while the app is running and refreshes rates at up to four selected daily times.
+
 The Convert tab calculates the entered RUB amount when Enter is pressed. The History tab can export saved rate records to an XLSX workbook.
 
 The Convert tab also shows color indicators next to each rate by comparing it with the latest saved record before the current day: light blue means better, red means worse, white means unchanged, and black means there is no earlier record to compare.
