@@ -6,8 +6,9 @@ from datetime import date, datetime
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QThread, QTimer, QUrl, Signal, Slot
+from PySide6.QtGui import QAction, QCloseEvent, QIcon
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
-from PySide6.QtWidgets import QMainWindow, QMessageBox, QTabWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QMessageBox, QSystemTrayIcon, QTabWidget
 
 from models.rates import RateSnapshot
 from services.data_sources import DataSourceManager
@@ -19,6 +20,7 @@ from ui.settings_tab import SettingsTab
 
 
 NOTIFICATION_SOUND_PATH = "assets/audio/notification_1.mp3"
+TRAY_MESSAGE_TIMEOUT_MS = 4_000
 
 
 class RefreshWorker(QObject):
@@ -38,17 +40,20 @@ class RefreshWorker(QObject):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self) -> None:
+    def __init__(self, app_icon: QIcon | None = None) -> None:
         super().__init__()
         self.cache = CacheRepository()
         self.manager = DataSourceManager(self.cache)
         self.refresh_thread: QThread | None = None
         self.refresh_worker: RefreshWorker | None = None
         self.last_scheduled_refresh_key = ""
+        self.is_running_in_background = False
+        self.is_exiting = False
         self.notification_audio = QAudioOutput(self)
         self.notification_player = QMediaPlayer(self)
         self.notification_player.setAudioOutput(self.notification_audio)
         self.notification_audio.setVolume(0.7)
+        self.app_icon = app_icon or QIcon(str(_resource_path("assets/icons/yenshift_petal.ico")))
 
         self.setWindowTitle("YenShift")
         self.setFixedSize(512, 640)
@@ -77,6 +82,7 @@ class MainWindow(QMainWindow):
         self.schedule_timer.setInterval(30_000)
         self.schedule_timer.timeout.connect(self.check_scheduled_refresh)
         self.schedule_timer.start()
+        self.create_tray_icon()
 
         self.setStyleSheet(
             """
@@ -142,6 +148,93 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(0, self.refresh_rates)
         QTimer.singleShot(1_000, self.check_scheduled_refresh)
 
+    def create_tray_icon(self) -> None:
+        self.tray_icon = QSystemTrayIcon(self.app_icon, self)
+        self.tray_icon.setToolTip("YenShift")
+
+        tray_menu = QMenu(self)
+        refresh_action = QAction("Update rates", self)
+        open_action = QAction("Open app", self)
+        close_action = QAction("Close", self)
+
+        refresh_action.triggered.connect(self.refresh_rates)
+        open_action.triggered.connect(self.show_app_window)
+        close_action.triggered.connect(self.exit_app)
+
+        tray_menu.addAction(refresh_action)
+        tray_menu.addAction(open_action)
+        tray_menu.addSeparator()
+        tray_menu.addAction(close_action)
+
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.activated.connect(self.on_tray_activated)
+        self.tray_icon.show()
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        if self.is_exiting:
+            event.accept()
+            return
+
+        message = QMessageBox(self)
+        message.setWindowTitle("Close YenShift")
+        message.setText("Close YenShift completely or keep it running in the background?")
+        background_button = message.addButton("Run in background", QMessageBox.ButtonRole.AcceptRole)
+        close_button = message.addButton("Close completely", QMessageBox.ButtonRole.DestructiveRole)
+        cancel_button = message.addButton(QMessageBox.StandardButton.Cancel)
+        message.setDefaultButton(background_button)
+        message.exec()
+
+        clicked_button = message.clickedButton()
+        if clicked_button == background_button:
+            event.ignore()
+            self.hide_to_background()
+            return
+        if clicked_button == close_button:
+            self.is_exiting = True
+            event.accept()
+            QApplication.quit()
+            return
+
+        event.ignore()
+        if clicked_button == cancel_button:
+            self.show_app_window()
+
+    @Slot(QSystemTrayIcon.ActivationReason)
+    def on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            self.show_app_window()
+
+    @Slot()
+    def show_app_window(self) -> None:
+        self.is_running_in_background = False
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def hide_to_background(self) -> None:
+        self.is_running_in_background = True
+        self.hide()
+        self.tray_icon.showMessage(
+            "YenShift is still running",
+            "Automatic updates will continue in the background.",
+            QSystemTrayIcon.MessageIcon.Information,
+            TRAY_MESSAGE_TIMEOUT_MS,
+        )
+
+    @Slot()
+    def exit_app(self) -> None:
+        self.is_exiting = True
+        self.tray_icon.hide()
+        QApplication.quit()
+
+    def notify_already_running(self) -> None:
+        self.tray_icon.showMessage(
+            "YenShift is already running",
+            "Use the tray icon to open the app or close it completely.",
+            QSystemTrayIcon.MessageIcon.Information,
+            TRAY_MESSAGE_TIMEOUT_MS,
+        )
+
     def load_cached_snapshot(self) -> None:
         snapshot = self.manager.latest_or_none()
         if snapshot is not None:
@@ -192,16 +285,16 @@ class MainWindow(QMainWindow):
         self.reload_saved_data()
         self.play_notification_sound()
         if snapshot.warning:
-            QMessageBox.warning(self, "Rates warning", snapshot.warning)
+            self.show_refresh_message("Rates warning", snapshot.warning, warning=True)
 
     @Slot(str)
     def on_refresh_failed(self, message: str) -> None:
         cached = self.manager.latest_or_none()
         if cached is not None:
             self.apply_snapshot(cached)
-            QMessageBox.warning(self, "Offline mode", f"No internet connection. Using last saved data.\n\n{message}")
+            self.show_refresh_message("Offline mode", f"No internet connection. Using last saved data.\n\n{message}", warning=True)
         else:
-            QMessageBox.critical(self, "Rates unavailable", message)
+            self.show_refresh_message("Rates unavailable", message, warning=True, critical=True)
 
     @Slot()
     def cleanup_refresh_thread(self) -> None:
@@ -216,6 +309,8 @@ class MainWindow(QMainWindow):
         self.main_tab.set_snapshot(snapshot, comparison_snapshot)
 
     def play_notification_sound(self) -> None:
+        if self.is_running_in_background:
+            return
         if not self.settings_tab.notification_sound_enabled():
             return
 
@@ -225,6 +320,19 @@ class MainWindow(QMainWindow):
 
         self.notification_player.setSource(QUrl.fromLocalFile(str(sound_path)))
         self.notification_player.play()
+
+    def show_refresh_message(self, title: str, message: str, warning: bool = False, critical: bool = False) -> None:
+        if self.is_running_in_background:
+            icon = QSystemTrayIcon.MessageIcon.Critical if critical else QSystemTrayIcon.MessageIcon.Warning
+            self.tray_icon.showMessage(title, message, icon, TRAY_MESSAGE_TIMEOUT_MS)
+            return
+
+        if critical:
+            QMessageBox.critical(self, title, message)
+        elif warning:
+            QMessageBox.warning(self, title, message)
+        else:
+            QMessageBox.information(self, title, message)
 
     @Slot()
     def reload_log(self) -> None:

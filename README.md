@@ -17,6 +17,10 @@ Automatic rate updates on startup can be enabled in the Settings tab. This optio
 
 Scheduled automatic updates can also be enabled in Settings. When enabled, YenShift checks the local computer time while the app is running and refreshes rates at up to four selected daily times.
 
+YenShift can keep running in the Windows notification area after the main window is closed. On close, choose whether to exit completely or continue in the background. Left-click the tray icon to reopen the app, or right-click it to update rates, open the app, or close YenShift. Scheduled updates continue in the background without playing the update sound.
+
+If YenShift is already running and the shortcut is opened again, the existing app shows a notification instead of starting a second copy.
+
 The Convert tab calculates the entered RUB amount when Enter is pressed. The History tab can export saved rate records to an XLSX workbook.
 
 The Convert tab also shows color indicators next to each rate by comparing it with the latest saved record before the current day: light blue means better, red means worse, white means unchanged, and black means there is no earlier record to compare.
